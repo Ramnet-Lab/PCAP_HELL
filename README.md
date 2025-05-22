@@ -180,7 +180,3 @@ WantedBy=multi-user.target
 - The service runs in the specified `WorkingDirectory`. All relative paths (including `.env`) are resolved from here.
 - Ensure all dependencies are installed and accessible to the specified user (consider using a virtual environment and updating `ExecStart` accordingly).
 - If you update the service file, always run `sudo systemctl daemon-reload` before restarting the service.
-
-## Summary
-
-This README is the authoritative reference for the PCAP-to-Elasticsearch pipeline architecture, configuration, and operational details. All significant design decisions, configuration, and operational logic are recorded here for future maintenance and onboarding.
