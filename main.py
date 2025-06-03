@@ -112,20 +112,13 @@ def find_chunk_files_for_base(split_dir, base):
     ])
 
 def distribute_chunks_for_base(split_dir, batch_dirs, base):
+    import chunk_distributor  # Ensure the import is used
     chunk_files = find_chunk_files_for_base(split_dir, base)
     if not chunk_files:
         logging.error(f"No chunk files found for base {base} in {split_dir}")
         return []
-    # Use the same distribution logic as chunk_distributor
-    n = len(chunk_files)
-    base_count = n // 4
-    extras = n % 4
-    batches = []
-    idx = 0
-    for i in range(4):
-        count = base_count + (1 if i < extras else 0)
-        batches.append(chunk_files[idx:idx+count])
-        idx += count
+    # Use chunk_distributor to get batches
+    batches = chunk_distributor.distribute_chunks(chunk_files)
     moved = []
     for i, batch in enumerate(batches):
         batch_dir = batch_dirs[i]
@@ -167,6 +160,9 @@ def upload_chunks_for_base(batch_dirs, base):
 def process_pcap_file(pcap_path):
     thread_name = threading.current_thread().name
     base = get_base_name(pcap_path)
+    if OUTPUT_DIR is None:
+        logging.error("OUTPUT_DIR is not set.")
+        return
     ndjson_path = os.path.join(OUTPUT_DIR, base + ".ndjson")
     logging.info(f"[WORKER START] Processing file: {pcap_path}")
 
@@ -182,6 +178,9 @@ def process_pcap_file(pcap_path):
         # 2. Split NDJSON into chunks
         from pathlib import Path as _Path
         logging.info(f"[{thread_name}] [STAGE] Splitting NDJSON into chunks: {ndjson_path}")
+        if SPLIT_DIR is None:
+            logging.error(f"[{thread_name}] [ERROR] SPLIT_DIR is not set.")
+            return
         split_success = ndjson_splitter.split_ndjson_file(_Path(ndjson_path), _Path(SPLIT_DIR))
         if not split_success:
             logging.error(f"[{thread_name}] [ERROR] Failed to split NDJSON {ndjson_path}.")

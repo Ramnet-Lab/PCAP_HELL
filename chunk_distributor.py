@@ -3,17 +3,32 @@ import shutil
 import logging
 from dotenv import load_dotenv
 from collections import defaultdict
+from typing import cast
 
 # Load environment variables from .env
 load_dotenv()
 
-SPLIT_DIR = os.getenv("SPLIT_DIR")
-BATCH_DIRS = [
-    os.getenv("BATCH_DIR_B1"),
-    os.getenv("BATCH_DIR_B2"),
-    os.getenv("BATCH_DIR_B3"),
-    os.getenv("BATCH_DIR_B4"),
+_split_dir_raw = os.getenv("SPLIT_DIR")
+if not _split_dir_raw:
+    raise EnvironmentError("SPLIT_DIR environment variable must be set and non-empty.")
+SPLIT_DIR: str = _split_dir_raw  # type: ignore
+
+batch_env_vars = [
+    "BATCH_DIR_B1",
+    "BATCH_DIR_B2",
+    "BATCH_DIR_B3",
+    "BATCH_DIR_B4",
 ]
+batch_dirs_raw = []
+for var in batch_env_vars:
+    val = os.getenv(var)
+    if not val:
+        raise EnvironmentError(f"{var} environment variable must be set and non-empty.")
+    batch_dirs_raw.append(cast(str, val))
+
+# Collect batch directories, filtering out any that are None or empty (should not happen now)
+BATCH_DIRS = [d for d in batch_dirs_raw if d]
+BATCH_DIRS: list[str]  # type hint for static checkers
 BATCH_LOG = os.path.join(SPLIT_DIR, "batch.log")
 
 # Setup logging
@@ -30,6 +45,9 @@ def ensure_directories():
     if not os.path.isdir(SPLIT_DIR):
         logging.error(f"SPLIT_DIR does not exist: {SPLIT_DIR}")
         raise FileNotFoundError(f"SPLIT_DIR does not exist: {SPLIT_DIR}")
+    if len(BATCH_DIRS) != 4:
+        logging.error(f"Exactly 4 batch directories must be configured. Found: {BATCH_DIRS}")
+        raise ValueError(f"Exactly 4 batch directories must be configured. Found: {BATCH_DIRS}")
     for d in BATCH_DIRS:
         if not os.path.isdir(d):
             try:
@@ -94,18 +112,19 @@ def main():
             logging.info(f"All chunks for base '{base}' already distributed.")
             continue
 
-        batches = distribute_chunks(undistributed)
-        for i, batch_files in enumerate(batches):
-            batch_dir = BATCH_DIRS[i]
-            for fname in batch_files:
-                src = os.path.join(SPLIT_DIR, fname)
-                dst = os.path.join(batch_dir, fname)
-                try:
-                    shutil.move(src, dst)
-                    log_distributed_chunk(src)
-                    logging.info(f"Moved {src} -> {dst}")
-                except Exception as e:
-                    logging.error(f"Failed to move {src} to {dst}: {e}")
+        # Round-robin assignment of undistributed chunks to batch directories
+        undistributed_sorted = sorted(undistributed)
+        num_batches = len(BATCH_DIRS)
+        for idx, fname in enumerate(undistributed_sorted):
+            batch_dir = BATCH_DIRS[idx % num_batches]
+            src = os.path.join(SPLIT_DIR, fname)
+            dst = os.path.join(batch_dir, fname)
+            try:
+                shutil.move(src, dst)
+                log_distributed_chunk(src)
+                logging.info(f"Assigned chunk '{src}' to batch directory '{batch_dir}' (idx={idx}) and moved to '{dst}'")
+            except Exception as e:
+                logging.error(f"Failed to move {src} to {dst}: {e}")
 
 if __name__ == "__main__":
     try:

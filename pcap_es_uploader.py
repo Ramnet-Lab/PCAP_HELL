@@ -58,6 +58,11 @@ def upload_chunk(chunk_path, es_node, log_path):
         if result.returncode == 0:
             append_uploaded_file(log_path, chunk_path.name)
             logging.info(f"Uploaded {chunk_path} successfully.")
+            try:
+                os.remove(chunk_path)
+                logging.info(f"Deleted {chunk_path} after successful upload.")
+            except Exception as del_exc:
+                logging.error(f"Failed to delete {chunk_path} after upload: {del_exc}")
             return (chunk_path, True, "")
         else:
             logging.error(f"Failed to upload {chunk_path}: {result.stderr.strip()}")

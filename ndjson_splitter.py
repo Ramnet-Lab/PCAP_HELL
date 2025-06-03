@@ -20,7 +20,7 @@ def load_config():
     load_dotenv()
     ndjson_dir = os.getenv("OUTPUT_DIR")
     split_dir = os.getenv("SPLIT_DIR")
-    batch_size = int(os.getenv("NDJSON_BATCH_SIZE", "10000"))
+    batch_size = int(os.getenv("NDJSON_BATCH_SIZE", "1000"))
     if not ndjson_dir or not split_dir:
         logging.error("Both OUTPUT_DIR and SPLIT_DIR must be set in the .env file.")
         sys.exit(1)
@@ -38,7 +38,7 @@ def append_to_split_log(split_dir: Path, base_name: str):
     with open(log_path, "a") as f:
         f.write(base_name + "\n")
 
-def split_ndjson_file(ndjson_path: Path, split_dir: Path, batch_size: int = 10000):
+def split_ndjson_file(ndjson_path: Path, split_dir: Path, batch_size: int = 1000):
     base = ndjson_path.stem
     chunk_prefix = split_dir / f"{base}.chunk_"
     cmd = [
