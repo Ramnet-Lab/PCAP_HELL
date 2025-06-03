@@ -20,10 +20,11 @@ def load_config():
     load_dotenv()
     ndjson_dir = os.getenv("OUTPUT_DIR")
     split_dir = os.getenv("SPLIT_DIR")
+    batch_size = int(os.getenv("NDJSON_BATCH_SIZE", "10000"))
     if not ndjson_dir or not split_dir:
         logging.error("Both OUTPUT_DIR and SPLIT_DIR must be set in the .env file.")
         sys.exit(1)
-    return Path(ndjson_dir), Path(split_dir)
+    return Path(ndjson_dir), Path(split_dir), batch_size
 
 def read_split_log(split_dir: Path):
     log_path = split_dir / "split.log"
@@ -37,17 +38,17 @@ def append_to_split_log(split_dir: Path, base_name: str):
     with open(log_path, "a") as f:
         f.write(base_name + "\n")
 
-def split_ndjson_file(ndjson_path: Path, split_dir: Path):
+def split_ndjson_file(ndjson_path: Path, split_dir: Path, batch_size: int = 10000):
     base = ndjson_path.stem
     chunk_prefix = split_dir / f"{base}.chunk_"
     cmd = [
         "split",
-        "-l", "10000",
+        "-l", str(batch_size),
         "-a", "4",
         str(ndjson_path),
         str(chunk_prefix)
     ]
-    logging.info(f"Splitting {ndjson_path} into chunks with prefix {chunk_prefix}")
+    logging.info(f"Splitting {ndjson_path} into chunks of {batch_size} lines with prefix {chunk_prefix}")
     try:
         subprocess.run(cmd, check=True)
         logging.info(f"Successfully split {ndjson_path}")
@@ -66,7 +67,7 @@ def ensure_dir(path: Path):
         path.mkdir(parents=True, exist_ok=True)
 
 def main():
-    ndjson_dir, split_dir = load_config()
+    ndjson_dir, split_dir, batch_size = load_config()
     ensure_dir(split_dir)
     setup_logging(split_dir)
     split_log = read_split_log(split_dir)
@@ -81,7 +82,7 @@ def main():
         if base in split_log:
             logging.info(f"Skipping {ndjson_path} (already split)")
             continue
-        success = split_ndjson_file(ndjson_path, split_dir)
+        success = split_ndjson_file(ndjson_path, split_dir, batch_size)
         if success:
             append_to_split_log(split_dir, base)
 

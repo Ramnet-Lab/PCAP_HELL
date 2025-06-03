@@ -1,31 +1,3 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-.venv/
-env/
-venv/
-
-# Environment variables
-.env
-
-# VSCode settings
-.vscode/
-
-# OS files
-.DS_Store
-
-# Test and coverage outputs
-.coverage
-htmlcov/
-.tox/
-.nox/
-.pytest_cache/
-.cache/
-
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
+ndjson/
+input/
+batches/
